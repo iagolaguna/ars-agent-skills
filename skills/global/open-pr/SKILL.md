@@ -102,4 +102,9 @@ EOF
   when the title type is `spec`.
 - Don't change draft/ready state on an existing PR. Leave that to the user.
 
-Report the PR URL, the title, and which template you used.
+Don't merge the PR unless the user asks. If they do, use the method the repo expects: the template's top
+comment or `AGENTS.md` usually says which (`gh pr merge <n> --merge`, `--rebase`, or `--squash`). If nothing
+says, ask instead of picking one.
+
+Report the PR URL, the title, and which template you used. If the template or `AGENTS.md` names a merge
+method for this PR, repeat it in the report.
