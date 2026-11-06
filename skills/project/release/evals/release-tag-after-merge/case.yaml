@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: release-tag-after-merge
+expected_outcome: |
+  PR #7 merged release/0.2.0 into main with a two-parent merge commit M, recorded as mergeCommit in gh-state/prs.json. A later CI merge moved main's tip past M, and the release branch tip is the one-parent chore(release): 0.2.0 commit, which is also the wrong place to tag. The agent tags annotated v0.2.0 on M, pushes it, and publishes the GitHub release with the 0.2.0 changelog section as notes. It opens a pull request into develop from main or from chore/back-merge-v0.2.0 (an open PR is enough) and does not cherry-pick onto develop or delete release/0.2.0.
+context:
+  scaffold_script: setup.sh

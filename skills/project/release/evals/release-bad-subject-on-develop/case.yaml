@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: release-bad-subject-on-develop
+expected_outcome: |
+  A commit named "wip stuff" is already on origin/develop. The agent creates release/0.2.0 at that same commit, then stops. It does not rewrite develop, force-push, change CHANGELOG.md or package.json, or open a PR. It asks how to handle that commit (for example leave it out and write the line by hand) instead of silently dropping it.
+context:
+  scaffold_script: setup.sh

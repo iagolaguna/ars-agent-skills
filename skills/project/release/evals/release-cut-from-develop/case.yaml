@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: release-cut-from-develop
+expected_outcome: |
+  The agent creates release/0.2.0 from origin/develop, generates a 0.2.0 CHANGELOG section listing the pricing page, the price rounding fix and the pricing docs (not the reverted dark mode, not the 0.1.1 hotfix, no merge commits), sets package.json to 0.2.0, commits chore(release): 0.2.0, runs npm run check, pushes the branch, and opens a draft PR into main titled chore(release): 0.2.0. It stops there because the PR is not merged: no tag, main and develop untouched.
+context:
+  scaffold_script: setup.sh
