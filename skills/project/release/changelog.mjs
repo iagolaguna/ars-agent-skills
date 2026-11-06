@@ -1,15 +1,38 @@
 #!/usr/bin/env node
-// Print one Keep-a-Changelog-shaped section for commits on HEAD whose patch
-// is not already on origin/main. A rebase onto main changes SHAs, so this
-// compares patches, not ancestry. Conventional subjects only. feat, fix, and
-// docs are listed. A breaking change (bang or BREAKING CHANGE footer) is
-// listed under Breaking instead.
+// Print one Keep-a-Changelog-shaped section for the commits on HEAD that are
+// not reachable from origin/main. Release branches are cut from develop and
+// merge into main with a merge commit, so the same SHAs live on both sides
+// and ancestry is exact. Merge commits are skipped. Conventional subjects
+// only. feat, fix, and docs are listed. A breaking change (bang or BREAKING
+// CHANGE footer) is listed under Breaking instead. Reverts (git's default
+// Revert "..." subject, or revert:) are not listed, and a commit reverted
+// inside the same range is dropped too.
+//
+// usage: changelog.mjs <semver> [--since <ref>] [--lenient]
+// --since    also excludes everything reachable from <ref>. Only the first
+//            release after a repo moves off rebase merges needs it.
+// --lenient  warns about non-conventional subjects instead of failing, and
+//            leaves them out. Use it only after the user agreed, when those
+//            commits are already on develop or main and can't be reworded.
 
 import { execFileSync } from "node:child_process"
 
-const version = process.argv[2]
+const usage = "usage: changelog.mjs <semver> [--since <ref>] [--lenient]"
+const args = process.argv.slice(2)
+const version = args.shift()
+let since
+let lenient = false
+while (args.length > 0) {
+  const flag = args.shift()
+  if (flag === "--since" && args[0] && !args[0].startsWith("--")) since = args.shift()
+  else if (flag === "--lenient") lenient = true
+  else {
+    console.error(usage)
+    process.exit(1)
+  }
+}
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version ?? "")) {
-  console.error("usage: changelog.mjs <semver>")
+  console.error(usage)
   process.exit(1)
 }
 
@@ -20,11 +43,11 @@ try {
     "git",
     [
       "log",
-      "--cherry-pick",
-      "--right-only",
+      "--no-merges",
       "--reverse",
-      "--format=%h%x1f%s%x1f%b%x1e",
-      "origin/main...HEAD",
+      "--format=%H%x1f%h%x1f%s%x1f%b%x1e",
+      "origin/main..HEAD",
+      ...(since ? [`^${since}`] : []),
     ],
     { encoding: "utf8" }
   )
@@ -38,26 +61,35 @@ const commits = raw
   .map((entry) => entry.trim())
   .filter(Boolean)
   .map((entry) => {
-    const [hash, subject, body = ""] = entry.split("\x1f")
-    return { hash, subject, body }
+    const [full, hash, subject, body = ""] = entry.split("\x1f")
+    return { full, hash, subject, body }
   })
 
+const reverted = new Set(
+  commits.flatMap((commit) =>
+    [...commit.body.matchAll(/This reverts commit ([0-9a-f]{40})/g)].map((m) => m[1])
+  )
+)
+
 if (commits.length === 0) {
-  console.error("No commits on HEAD whose patch is missing from origin/main. Fetch origin, or this branch has nothing new to release.")
+  console.error("No commits on HEAD that origin/main does not already have. Fetch origin, or this branch has nothing new to release.")
   process.exit(1)
 }
 
 const subjectPattern = /^([a-z]+)(?:\(([^)]+)\))?(!)?: (.+)$/
+const gitRevertPattern = /^Revert ".+"$/
 const groups = { Breaking: [], Features: [], Fixes: [], Docs: [] }
 const skipped = []
 
 for (const commit of commits) {
+  if (reverted.has(commit.full) || gitRevertPattern.test(commit.subject)) continue
   const match = subjectPattern.exec(commit.subject)
   if (!match) {
     skipped.push(commit)
     continue
   }
   const [, type, scope, bang, description] = match
+  if (type === "revert") continue
   const breaking = Boolean(bang) || /^BREAKING CHANGE:/m.test(commit.body)
   const line = scope
     ? `- ${scope}: ${description} (${commit.hash})`
@@ -68,12 +100,10 @@ for (const commit of commits) {
   else if (type === "docs") groups.Docs.push(line)
 }
 
-if (skipped.length > 0) {
-  for (const commit of skipped) {
-    console.error(`not a conventional commit: ${commit.hash} ${commit.subject}`)
-  }
-  process.exit(1)
+for (const commit of skipped) {
+  console.error(`${lenient ? "left out" : "not a conventional commit"}: ${commit.hash} ${commit.subject}`)
 }
+if (skipped.length > 0 && !lenient) process.exit(1)
 
 const lines = [`## [${version}] - ${date}`, ""]
 for (const heading of ["Breaking", "Features", "Fixes", "Docs"]) {
