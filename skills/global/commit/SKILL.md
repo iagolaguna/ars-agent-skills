@@ -1,6 +1,11 @@
 ---
 name: commit
-description: Analyzes the working tree, groups changes logically, and commits them in English using conventional commits. Pushes only when the user asks for it.
+description: >-
+  Analyzes the working tree, groups changes logically, and commits them in
+  English using conventional commits. Pushes only when the user asks for it.
+  Use whenever changes need to be committed ("/commit", "commit this",
+  "commita isso", "commit and push"), even when the conversation is in
+  another language.
 model: haiku
 user-invocable: true
 ---
@@ -20,12 +25,14 @@ git log --oneline -10
 
 Understand what changed and why. The recent log shows the repo's scopes and conventions, but the language is always English, even when older commits are in another language.
 
+If something is already staged, the user probably chose it on purpose: commit that set first, as its own group, unless it plainly mixes unrelated concerns. Untracked files are part of the change only when they belong to it; leave stray ones (scratch files, local config) out and mention them. If there is nothing to commit, say so and stop.
+
 ### Step 2: Group logically
 
-If changes span multiple concerns, split them into separate commits:
-- Feature code in one commit
-- Tests in another
-- Config or docs in another
+If changes span multiple concerns, split them into separate commits, one per concern. Each commit should make sense on its own and keep the build passing:
+- A feature or fix goes with its tests, in the same commit
+- Unrelated refactors, config, or dependency bumps go in their own commits
+- Docs that describe the change can ride along; standalone doc edits get their own commit
 
 If the changes are cohesive, a single commit is fine. If you're unsure how to group, ask the user.
 
@@ -66,12 +73,16 @@ Types:
 - `chore`: maintenance (deps, config, build)
 - `style`: formatting, no behavior change
 - `perf`: performance improvement
+- `build`: build system or packaging
 - `ci`: CI configuration
+- `revert`: reverts an earlier commit (`revert: <subject of the reverted commit>`, with `This reverts commit <sha>.` in the body)
+
+Breaking change: add `!` before the colon (`feat(api)!: drop v1 routes`) and a `BREAKING CHANGE: <what breaks>` line in the body.
 
 ## Rules
 
 1. Always English, in the subject and in the body.
-2. Subject up to 72 characters, imperative mood ("add", not "added"), lowercase, no trailing period.
+2. Subject up to 72 characters, imperative mood ("add", not "added"), lowercase except for names that need it, no trailing period.
 3. Scope is optional. Use it when it helps, like `feat(auth): add login`, and reuse the scopes already in the log.
 4. Body is optional and short: one to three lines on why the change was made, wrapped at 72 characters. Skip it when the subject says everything.
 5. Never use `--no-verify` unless the user asks. If a hook fails, fix the cause and create a new commit.
@@ -104,17 +115,18 @@ WIP
 
 ## Multiple commits example
 
-Changes: new API endpoint, its tests, and a README update.
+Changes: a new API endpoint with its tests, an unrelated dependency bump, and a README section about the endpoint.
 
 ```bash
-git add src/api/users.ts src/routes/users.ts
-git commit -m "feat: add users endpoint"
+git add src/api/users.ts src/routes/users.ts tests/api/users.test.ts README.md
+git commit -F - <<'EOF'
+feat(api): add users endpoint
+EOF
 
-git add tests/api/users.test.ts
-git commit -m "test: add users endpoint tests"
-
-git add README.md
-git commit -m "docs: document users endpoint"
+git add package.json pnpm-lock.yaml
+git commit -F - <<'EOF'
+chore: bump zod to 3.24
+EOF
 ```
 
 ## Important
