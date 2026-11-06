@@ -1,0 +1,29 @@
+schema: spec-driven
+
+# Project context: constraints an agent cannot infer by reading the code.
+# Stack, layout and commands live in AGENTS.md; don't duplicate them here.
+context: |
+  <One paragraph: what the product does and the promise every change must keep.>
+
+  Source of truth (read before proposing anything that touches product or UI):
+  - docs/PRODUCT.md: core objects, invariants, surface per route
+  - docs/DECISIONS.md: why things are the way they are
+  - docs/DESIGN-SYSTEM.md: tokens and visual rules
+
+  Invariants that cannot bend (full list in docs/PRODUCT.md#invariants):
+  1. <A rule the data model or UI must never break.>
+  2. <Another one.>
+
+  Out of scope: <things this product will never do>.
+
+rules:
+  proposal:
+    - Say which product invariants the change touches, or state that it touches none
+    - If the change contradicts docs/DECISIONS.md, say so explicitly and propose a new decision entry
+  design:
+    - Model invariants in the data model, never only in UI
+  specs:
+    - Write a scenario for every invariant the capability can violate, phrased as the failure it prevents
+  tasks:
+    - End with running the project's check command from AGENTS.md
+    - Include a browser check on the dev server for UI changes
