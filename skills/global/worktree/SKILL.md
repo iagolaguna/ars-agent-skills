@@ -1,99 +1,73 @@
 ---
 name: worktree
-description: Creates or removes a git worktree with automatic .env copy and dependency installation. Usage: /worktree <branch-name> | /worktree remove <branch-name>
+description: >-
+  Creates or removes a git worktree in ~/.worktrees, branched from the repo's
+  default branch, with the untracked .env* files copied over and dependencies
+  installed. Use when the user wants a worktree, a parallel or isolated copy of
+  the repo to work on another branch, or to clean one up ("/worktree feat/x",
+  "cria uma worktree pra essa feature", "remove the worktree for fix/y").
 user-invocable: true
 ---
 
-You are a git worktree setup specialist. Your role is to create or remove worktrees from a single branch name.
+# worktree
 
-## Input
+Create or remove a worktree from a single branch name. Don't modify files in the original checkout.
 
-The user provides a subcommand and a branch name. Examples:
-- `/worktree feat/new-feature` — create a worktree
-- `/worktree remove feat/new-feature` — remove a worktree
+- `/worktree <branch>`: create (the default when there is no subcommand)
+- `/worktree remove <branch>`: remove
 
-If no subcommand is given, default to **create**.
+Paths, for both:
 
----
+- Repo root: `git rev-parse --show-toplevel`. If you are already inside a worktree, use the main checkout: `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`.
+- Worktree path: `~/.worktrees/<repo-name>-wt-<branch>`, with every `/` in the branch name replaced by `-`.
 
 ## Create
 
-### Step 1: Determine paths
+### 1. Branch name and base
 
-- Get the repo root: `git rev-parse --show-toplevel`
-- Get the repo name from the root path (basename)
-- Worktree base dir: `~/.worktrees` (create it if it doesn't exist)
-- Worktree path: `~/.worktrees/<repo-name>-wt-<branch-name>` (replace `/` in branch name with `-`)
+If the user gave only a description, build a name with the repo's convention. Use the `conventional-branch` skill when it is available (`feature/`, `fix/`, `chore/`, ... in lowercase kebab-case).
 
-### Step 2: Create worktree
+`git fetch origin`, then find where the branch comes from:
+
+- Local branch exists (`git show-ref --verify --quiet refs/heads/<branch>`): `git worktree add <path> <branch>`.
+- Only on the remote (`git show-ref --verify --quiet refs/remotes/origin/<branch>`): `git worktree add --track -b <branch> <path> origin/<branch>`.
+- New branch: base it on the remote default branch, not on whatever is checked out. Get it with `git symbolic-ref --short refs/remotes/origin/HEAD` (in a git-flow repo that is usually `origin/develop`), fall back to `origin/main`, and run `git worktree add -b <branch> <path> <base>`. Use another base only when the user names one.
+
+If it fails (the branch is checked out elsewhere, the path exists), report the error and stop.
+
+### 2. Copy the env files
+
+Find the `.env*` files that git doesn't track, without walking into dependencies:
 
 ```bash
-git worktree add -b <branch-name> <worktree-path>
+cd <repo-root>
+find . \( -name node_modules -o -name .git -o -name .venv -o -name dist -o -name .next \) -prune \
+  -o -name '.env*' -type f -print
 ```
 
-If the branch already exists remotely or locally, use without `-b`:
+Skip any file `git ls-files --error-unmatch <file>` reports as tracked, like `.env.example`; the checkout already has it. Copy the rest to the same relative path inside the worktree, creating parent directories as needed.
 
-```bash
-git worktree add <worktree-path> <branch-name>
-```
+### 3. Install dependencies
 
-### Step 3: Copy environment files
+Use the lockfile in the worktree to pick the package manager, and don't let the install rewrite it:
 
-Search recursively for all `.env*` files under the repo root (`.env`, `.env.local`, `.env.development`, etc.), including subdirectories (monorepo packages, apps, etc.).
+| Lockfile | Command |
+|---|---|
+| `pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
+| `package-lock.json` | `npm ci` |
+| `yarn.lock` | `yarn install --immutable` (Yarn 2+) or `yarn install --frozen-lockfile` (Yarn 1) |
+| `bun.lock` / `bun.lockb` | `bun install --frozen-lockfile` |
+| `uv.lock` | `uv sync --frozen` |
 
-Use Glob with pattern `**/.env*` from the repo root to find them all. For each file found, recreate the same relative path inside the worktree — e.g., `apps/web/.env.local` in the original maps to `<worktree-path>/apps/web/.env.local`. Create parent directories as needed before copying.
+No lockfile: skip this step. If the install fails, report it and keep the worktree.
 
-### Step 4: Install dependencies
+### 4. Report
 
-Check for lockfiles in the worktree to detect the package manager:
-
-- `pnpm-lock.yaml` → `cd <worktree-path> && pnpm install`
-- `package-lock.json` → `cd <worktree-path> && npm install`
-- `yarn.lock` → `cd <worktree-path> && yarn install`
-- `bun.lockb` or `bun.lock` → `cd <worktree-path> && bun install`
-
-If no lockfile is found, skip this step.
-
-### Step 5: Report
-
-Tell the user:
-- Worktree path
-- Branch name
-- Which `.env*` files were copied (if any)
-- Whether deps were installed (and which package manager)
-
----
+Worktree path, branch, the base it came from, the env files copied, and the install result.
 
 ## Remove
 
-### Step 1: Determine path
-
-- Get the repo root: `git rev-parse --show-toplevel`
-- Get the repo name from the root path (basename)
-- Worktree path: `~/.worktrees/<repo-name>-wt-<branch-name>` (replace `/` in branch name with `-`)
-
-### Step 2: Remove worktree
-
-```bash
-git worktree remove <worktree-path>
-```
-
-If it fails due to uncommitted changes, inform the user and ask if they want to force-remove:
-
-```bash
-git worktree remove --force <worktree-path>
-```
-
-### Step 3: Report
-
-Tell the user the worktree path that was removed.
-
----
-
-## Rules
-
-1. Subcommands: `remove`. Anything else (or no subcommand) defaults to create.
-2. If worktree creation fails (e.g., branch already checked out), report the error clearly.
-3. If worktree removal fails due to uncommitted changes, ask before forcing.
-4. Do not modify any files in the original repo.
-5. Keep output minimal and direct.
+1. If the current directory is inside the worktree, `cd` to the repo root first.
+2. `git worktree remove <path>`. If it refuses because of uncommitted or untracked changes, show `git -C <path> status --short` and ask before running it again with `--force`.
+3. The branch stays. Offer to delete it with `git branch -d <branch>` (never `-D` without asking), and never delete the remote branch.
+4. Report the path removed and what happened to the branch.
