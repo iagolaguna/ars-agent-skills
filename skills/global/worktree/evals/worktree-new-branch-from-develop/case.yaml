@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: worktree-new-branch-from-develop
+expected_outcome: |
+  The user is on feature/other, which has an unpushed commit. The agent creates ~/.worktrees/app-wt-feature-billing-page on a new branch feature/billing-page based on origin/develop (so it does not contain the feature/other commit), copies .env and apps/web/.env.local but not node_modules/some-pkg/.env, installs with npm ci without changing package-lock.json, and leaves the original checkout as it was.
+context:
+  scaffold_script: setup.sh

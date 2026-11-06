@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: worktree-remote-only-branch
+expected_outcome: |
+  fix/login exists only on origin and the local clone has not fetched it. The agent fetches, creates ~/.worktrees/app-wt-fix-login from origin/fix/login with a local fix/login tracking it, so the worktree contains the commit "fix(auth): handle expired tokens".
+context:
+  scaffold_script: setup.sh
