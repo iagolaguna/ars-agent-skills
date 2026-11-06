@@ -3,14 +3,14 @@
 #
 #   ./install.sh global             symlink skills/global/* into ~/.agents/skills
 #   ./install.sh project <path>     copy skills/project/* into <path>/.agents/skills,
-#                                   mirror them for Claude and Grok, set up OpenSpec
+#                                   mirror them for Claude Code, set up OpenSpec
 #
-# .agents/skills is the canonical location. Claude Code only reads .claude/skills,
-# and Grok only reads .grok/skills inside a project, so both get symlinks.
+# .agents/skills is the canonical location. Grok, Codex, Cursor and most agents
+# read it directly. Claude Code only reads .claude/skills, so it gets symlinks.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MIRRORS=(.claude .grok)
+MIRRORS=(.claude)
 
 link() { # link <target> <link-path>
   if [ -e "$2" ] || [ -L "$2" ]; then
@@ -27,7 +27,7 @@ install_global() {
   for skill in "$ROOT"/skills/global/*/; do
     link "${skill%/}" "$dest/$(basename "$skill")"
   done
-  # Grok and most agents read ~/.agents/skills. Claude reads ~/.claude/skills.
+  # Most agents read ~/.agents/skills. Claude Code only reads ~/.claude/skills.
   if [ ! -e "$HOME/.claude/skills" ]; then
     mkdir -p "$HOME/.claude"
     ln -s "$dest" "$HOME/.claude/skills"
@@ -67,7 +67,7 @@ install_project() {
       cp "$ROOT/templates/openspec/config.yaml" "$project/openspec/config.yaml"
       echo "copy   openspec/config.yaml (fill in the placeholders)"
     fi
-    openspec init --tools claude,agents,grok --no-animation "$project"
+    openspec init --tools claude,agents --no-animation "$project"
   else
     echo "openspec not found, skipping. Install it with: npm i -g @fission-ai/openspec"
   fi

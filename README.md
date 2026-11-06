@@ -16,7 +16,7 @@ templates/
 
 Global skills go in `~/.agents/skills`. Project skills get copied into the project's `.agents/skills`, so they're versioned with the code and anyone who clones the repo gets them.
 
-`.agents/skills` is the canonical place. Most agents read it directly. Two don't: Claude Code only reads `.claude/skills`, and Grok only reads `.grok/skills` inside a project (it does read `~/.agents/skills` globally). The installer creates symlinks for both, so every skill has one real copy.
+`.agents/skills` is the canonical place. Grok, Codex, Cursor and most other agents read it directly, both in `~` and in the project. Claude Code is the exception: it only reads `.claude/skills`, so the installer symlinks each skill there. Every skill keeps one real copy.
 
 ## Skills
 
@@ -46,16 +46,16 @@ npx skills add iagolaguna/ars-agent-skills --skill commit open-pr worktree -g
 npx skills add iagolaguna/ars-agent-skills --skill release
 ```
 
-It won't create the Grok mirror or set up OpenSpec, though.
+It won't set up OpenSpec, though.
 
 ## OpenSpec
 
 `./install.sh project` also sets up [OpenSpec](https://github.com/Fission-AI/OpenSpec) when the CLI is installed:
 
 1. Copies `templates/openspec/config.yaml` into `openspec/` if the project doesn't have one yet.
-2. Runs `openspec init --tools claude,agents,grok`, which writes the OpenSpec skills to `.claude/skills`, `.agents/skills` and `.grok/skills`. Claude also gets the `/opsx:*` commands. Other agents call the skills by name, like `/openspec-propose`.
+2. Runs `openspec init --tools claude,agents`, which writes the OpenSpec skills to `.claude/skills` and `.agents/skills`. Claude also gets the `/opsx:*` commands. Other agents call the skills by name, like `/openspec-propose`.
 
-The OpenSpec skills themselves aren't in this repo. The CLI generates them, and `openspec update` keeps all three copies in sync.
+The OpenSpec skills themselves aren't in this repo. The CLI generates them, and `openspec update` keeps both copies in sync.
 
 The template is where my workflow lives. Its `context` block holds what an agent can't learn from reading the code: what the product promises, the invariants that can't bend, and what's out of scope. The `rules` block adds checks per artifact, so a proposal has to say which invariants it touches and the task list always ends with the project's checks. Stack and commands stay in `AGENTS.md`.
 
