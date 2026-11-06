@@ -3,7 +3,10 @@
 #
 #   ./install.sh global             symlink skills/global/* into ~/.agents/skills
 #   ./install.sh project <path>     copy skills/project/* into <path>/.agents/skills,
-#                                   mirror them for Claude Code, set up OpenSpec
+#                                   mirror them for Claude Code, add the release PR
+#                                   template, set up OpenSpec
+#   ./install.sh diff <path>        show where <path>'s copies of the project skills
+#                                   differ from this repo
 #
 # .agents/skills is the canonical location. Grok, Codex, Cursor and most agents
 # read it directly. Claude Code only reads .claude/skills, so it gets symlinks.
@@ -28,10 +31,15 @@ install_global() {
     link "${skill%/}" "$dest/$(basename "$skill")"
   done
   # Most agents read ~/.agents/skills. Claude Code only reads ~/.claude/skills.
-  if [ ! -e "$HOME/.claude/skills" ]; then
+  if [ ! -e "$HOME/.claude/skills" ] && [ ! -L "$HOME/.claude/skills" ]; then
     mkdir -p "$HOME/.claude"
     ln -s "$dest" "$HOME/.claude/skills"
     echo "link   ~/.claude/skills -> $dest"
+  elif [ "$(cd "$HOME/.claude/skills" && pwd -P)" != "$(cd "$dest" && pwd -P)" ]; then
+    echo "note   ~/.claude/skills is not $dest, linking each skill into it"
+    for skill in "$ROOT"/skills/global/*/; do
+      link "${skill%/}" "$HOME/.claude/skills/$(basename "$skill")"
+    done
   fi
 }
 
@@ -61,6 +69,15 @@ install_project() {
     done
   done
 
+  local template="$project/.github/PULL_REQUEST_TEMPLATE/release.md"
+  if [ -e "$template" ]; then
+    echo "skip   .github/PULL_REQUEST_TEMPLATE/release.md (already exists)"
+  else
+    mkdir -p "$(dirname "$template")"
+    cp "$ROOT/templates/github/release.md" "$template"
+    echo "copy   .github/PULL_REQUEST_TEMPLATE/release.md"
+  fi
+
   if command -v openspec >/dev/null 2>&1; then
     if [ ! -f "$project/openspec/config.yaml" ]; then
       mkdir -p "$project/openspec"
@@ -73,8 +90,29 @@ install_project() {
   fi
 }
 
+diff_project() {
+  local project="${1:?usage: ./install.sh diff <path>}"
+  project="$(cd "$project" && pwd)"
+  local status=0
+  for skill in "$ROOT"/skills/project/*/; do
+    local name; name="$(basename "$skill")"
+    local copy="$project/.agents/skills/$name"
+    if [ ! -e "$copy" ]; then
+      echo "missing .agents/skills/$name"
+    elif ! diff -ru "${skill%/}" "$copy"; then
+      status=1
+    fi
+  done
+  if [ -e "$project/.github/PULL_REQUEST_TEMPLATE/release.md" ]; then
+    diff -u "$ROOT/templates/github/release.md" "$project/.github/PULL_REQUEST_TEMPLATE/release.md" || status=1
+  fi
+  [ "$status" -eq 0 ] && echo "same   every project skill matches this repo"
+  return "$status"
+}
+
 case "${1:-}" in
   global) install_global ;;
   project) shift; install_project "$@" ;;
-  *) sed -n '2,10p' "$0"; exit 1 ;;
+  diff) shift; diff_project "$@" ;;
+  *) sed -n '2,14p' "$0"; exit 1 ;;
 esac
