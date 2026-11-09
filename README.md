@@ -23,8 +23,8 @@ Global skills go in `~/.agents/skills`. Project skills get copied into the proje
 
 | Skill | Level | What it does |
 |-------|-------|--------------|
-| `commit` | global | Groups changes and commits them in English with conventional commits |
-| `open-pr` | global | Writes the PR title and body from the repo's own template, creates or updates the PR |
+| `commit` | project | Groups changes and commits them in English with conventional commits |
+| `open-pr` | project | Writes the PR title and body from the repo's own template, creates or updates the PR |
 | `worktree` | global | Creates or removes a git worktree off the default branch, copying untracked `.env*` files and installing deps |
 | `release` | project | Git-flow release: branch from `develop`, changelog, PR into `main` with a merge commit, tag, GitHub release, back-merge into `develop`. Also hotfixes |
 
@@ -48,8 +48,8 @@ Project skills are copies, so they drift when someone improves them inside a pro
 If you'd rather use the [skills CLI](https://github.com/vercel-labs/skills), it finds everything under `skills/`:
 
 ```bash
-npx skills add iagolaguna/ars-agent-skills --skill commit open-pr worktree -g
-npx skills add iagolaguna/ars-agent-skills --skill release
+npx skills add iagolaguna/ars-agent-skills --skill worktree -g
+npx skills add iagolaguna/ars-agent-skills --skill commit open-pr release
 ```
 
 It won't set up OpenSpec, though.
