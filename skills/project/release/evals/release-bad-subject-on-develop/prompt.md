@@ -5,4 +5,4 @@ timeout_seconds: 900
 allowed_tools: [Read, Glob, Grep, Skill, Write, Edit, Bash]
 ---
 
-corta o release 0.2.0 pra mim
+cut the 0.2.0 release for me
