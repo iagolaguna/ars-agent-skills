@@ -26,7 +26,12 @@ Global skills go in `~/.agents/skills`. Project skills get copied into the proje
 | `commit` | project | Groups changes and commits them in English with conventional commits |
 | `open-pr` | project | Writes the PR title and body from the repo's own template, creates or updates the PR |
 | `worktree` | global | Creates or removes a git worktree off the default branch, copying untracked `.env*` files and installing deps |
+| `typescript` | global | TS/JS style: named and derived types, pure functions, guard clauses, exhaustive pattern matching, typed errors, few comments, no one-call wrappers |
+| `frontend` | global | React and Next.js client code: named props, derived state, effects only for external systems, UI states as unions, accessible markup. Builds on `typescript` |
+| `backend` | global | Node.js and Next.js server code: parse at the edge, pure domain logic with injected deps, typed errors mapped to HTTP in one place, typed config, structured logs. Builds on `typescript` |
 | `release` | project | Git-flow release: branch from `develop`, changelog, PR into `main` with a merge commit, tag, GitHub release, back-merge into `develop`. Also hotfixes |
+
+`typescript`, `frontend` and `backend` are meant to load together: the last two only add what's specific to their side and point back to `typescript` for the language rules. All three defer to decisions the project already made (lint config, `neverthrow`, `ts-pattern`) and tell the agent to check a library's docs through [Context7](https://context7.com) before writing against an API it isn't sure about for the installed version, so they work best with the Context7 MCP server set up.
 
 Project skills don't hardcode a project's checks. `release` runs whatever the project's `AGENTS.md` lists as required before a PR, so the same SKILL.md works in every repo.
 
@@ -48,7 +53,7 @@ Project skills are copies, so they drift when someone improves them inside a pro
 If you'd rather use the [skills CLI](https://github.com/vercel-labs/skills), it finds everything under `skills/`:
 
 ```bash
-npx skills add iagolaguna/ars-agent-skills --skill worktree -g
+npx skills add iagolaguna/ars-agent-skills --skill worktree typescript frontend backend -g
 npx skills add iagolaguna/ars-agent-skills --skill commit open-pr release
 ```
 
